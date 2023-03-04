@@ -1,7 +1,7 @@
 package com.ps.studybuddy.security.constant;
 
 public class Authority {
-    public static final String[] USER_AUTHORITIES = {"user:read", "device:read"};
+    public static final String[] USER_AUTHORITIES = {"user:read"};
     public static final String[] HR_AUTHORITIES = {"user:read", "user:update"};
     public static final String[] MANAGER_AUTHORITIES = {"user:read", "user:update"};
     public static final String[] ADMIN_AUTHORITIES = {"user:read", "user:update", "user:create"};
@@ -9,10 +9,6 @@ public class Authority {
             "user:read",
             "user:update",
             "user:create",
-            "user:delete",
-            "device:read",
-            "device:update",
-            "device:create",
-            "device:delete"
+            "user:delete"
     };
 }

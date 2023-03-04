@@ -1,8 +1,16 @@
 package com.ps.studybuddy.services;
 
+import com.ps.studybuddy.domain.dtos.UserCreateDTO;
+import com.ps.studybuddy.domain.dtos.UserDTO;
+import com.ps.studybuddy.domain.dtos.UserUpdateDTO;
 import com.ps.studybuddy.domain.entities.User;
 import com.ps.studybuddy.domain.entities.UserPrincipal;
+import com.ps.studybuddy.domain.enumeration.Role;
 import com.ps.studybuddy.domain.repositories.UserRepository;
+import com.ps.studybuddy.exception.domain.EmailExistException;
+import com.ps.studybuddy.exception.domain.UserNotFoundException;
+import com.ps.studybuddy.exception.domain.UsernameExistException;
+import org.apache.commons.lang3.StringUtils;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +23,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import javax.persistence.EntityNotFoundException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -50,5 +60,135 @@ public class UserService implements UserDetailsService {
         } else {
             return new UserPrincipal(userOptional.get());
         }
+    }
+
+    public List<UserDTO> findAll() {
+        return this.userRepository.findAll().stream()
+                .map(user -> this.modelMapper.map(user, UserDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    public UserDTO findById(UUID id) throws EntityNotFoundException {
+        Optional<User> personOptional = this.userRepository.findById(id);
+        if(personOptional.isEmpty()) {
+            throw new EntityNotFoundException(User.class.getSimpleName() + " with id: " + id);
+        }
+        return this.modelMapper.map(personOptional.get(), UserDTO.class);
+    }
+
+    public String register(UserCreateDTO dto) throws UserNotFoundException, EmailExistException, UsernameExistException {
+        validateNewUsernameAndEmail(StringUtils.EMPTY, dto.getUsername(), dto.getEmail());
+        User user = this.modelMapper.map(dto, User.class);
+        user.setCreatedDate(new Date(System.currentTimeMillis()));
+        String encodedPassword = encodePassword(user.getPassword());
+        user.setPassword(encodedPassword);
+        user.setAvatarColor(this.stringToColour(user.getUsername()));
+        user.setActive(true);
+        user.setNotLocked(true);
+        user.setRole(dto.getRole());
+        user.setAuthorities(getRoleEnumName(dto.getRole()).getAuthorities());
+        this.userRepository.save(user);
+        LOGGER.info("New user password: " + dto.getPassword());
+        return user.getId().toString();
+    }
+
+    public UserDTO updateUser(UserUpdateDTO dto) throws UserNotFoundException, EmailExistException, UsernameExistException, EntityNotFoundException {
+        validateNewUsernameAndEmail(dto.getUsername(), dto.getNewUsername(), dto.getNewEmail());
+        Optional<User> personOptional = this.userRepository.findById(dto.getId());
+        if(personOptional.isEmpty()){
+            throw new EntityNotFoundException();
+        }
+        User person = User.builder()
+                .id(personOptional.get().getId())
+                .username(dto.getNewUsername())
+                .email(dto.getNewEmail())
+                .firstName(dto.getFirstName())
+                .lastName(dto.getLastName())
+                .build();
+        person.setActive(dto.isActive());
+        person.setNotLocked(dto.isNotLocked());
+        person.setId(personOptional.get().getId());
+        person.setCreatedDate(personOptional.get().getCreatedDate());
+        person.setPassword(personOptional.get().getPassword());
+        person.setAvatarColor(this.stringToColour(dto.getUsername()));
+        person.setRole(personOptional.get().getRole());
+        person.setAuthorities(personOptional.get().getAuthorities());
+        this.userRepository.save(person);
+        return this.modelMapper.map(person, UserDTO.class);
+    }
+
+    public void deleteById(UUID id) throws EntityNotFoundException {
+        Optional<User> personOptional = this.userRepository.findById(id);
+        if (personOptional.isEmpty()) {
+            throw new EntityNotFoundException(User.class.getSimpleName() + " with id: " + id);
+        }
+        this.userRepository.deleteById(id);
+    }
+
+    private String encodePassword(String password) {
+        return passwordEncoder.encode(password);
+    }
+
+    private UserDTO validateNewUsernameAndEmail(String currentUsername, String newUsername, String newEmail) throws UserNotFoundException, EmailExistException, UsernameExistException {
+        UserDTO personByNewUsername = findByUsername(newUsername);
+        UserDTO personByNewEmail = findByEmail(newEmail);
+        if (StringUtils.isNotBlank(currentUsername)) {
+            UserDTO currentPerson = findByUsername(currentUsername);
+            if (currentPerson == null) {
+                throw new UserNotFoundException(NO_PERSON_FOUND_BY_USERNAME + currentUsername);
+            }
+            if (personByNewUsername != null && !currentPerson.getId().equals(personByNewUsername.getId())) {
+                throw new UsernameExistException(USERNAME_ALREADY_EXISTS);
+            }
+            if (personByNewEmail != null && !currentPerson.getId().equals(personByNewEmail.getId())) {
+                throw new EmailExistException(EMAIL_ALREADY_EXISTS);
+            }
+            return currentPerson;
+        } else {
+            if (personByNewUsername != null) {
+                throw new UsernameExistException(USERNAME_ALREADY_EXISTS);
+            }
+            if (personByNewEmail != null) {
+                throw new EmailExistException(EMAIL_ALREADY_EXISTS);
+            }
+            return null;
+        }
+    }
+
+    public User findEntityByUsername(String username) {
+        Optional<User> optional = this.userRepository.findUserByUsername(username);
+        return optional.orElse(null);
+    }
+
+    public UserDTO findByUsername(String username) {
+        Optional<User> optional = this.userRepository.findUserByUsername(username);
+        return optional.map(user -> this.modelMapper.map(user, UserDTO.class)).orElse(null);
+    }
+
+    public UserDTO findByEmail(String email) {
+        Optional<User> optional = this.userRepository.findUserByEmail(email);
+        return optional.map(user -> this.modelMapper.map(user, UserDTO.class)).orElse(null);
+    }
+
+    private Role getRoleEnumName(String role) {
+        return Role.valueOf(role);
+    }
+
+    /**
+     * A function that generates a random color hex code from a user's username
+     * @param username a string of variable length
+     * @return a string of a hex code
+     */
+    public String stringToColour(String username) {
+        int hash = 0;
+        for (int i = 0; i < username.length(); i++) {
+            hash = username.charAt(i) + ((hash << 5) - hash);
+        }
+        StringBuilder colour = new StringBuilder("#");
+        for (int i = 0; i < 3; i++) {
+            int value = (hash >> (i * 8)) & 0xFF;
+            colour.append(String.format("%02x", value));
+        }
+        return colour.toString();
     }
 }

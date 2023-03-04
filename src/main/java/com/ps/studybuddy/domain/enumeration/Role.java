@@ -1,7 +1,10 @@
 package com.ps.studybuddy.domain.enumeration;
 
+import lombok.Getter;
+
 import static com.ps.studybuddy.security.constant.Authority.*;
 
+@Getter
 public enum Role {
     ROLE_USER(USER_AUTHORITIES),
 //    ROLE_HR(HR_AUTHORITIES),
