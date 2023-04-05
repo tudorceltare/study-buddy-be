@@ -4,6 +4,7 @@ import com.ps.studybuddy.domain.dtos.UserCreateDTO;
 import com.ps.studybuddy.domain.dtos.UserDTO;
 import com.ps.studybuddy.domain.dtos.UserUpdateDTO;
 import com.ps.studybuddy.exception.domain.EmailExistException;
+import com.ps.studybuddy.exception.domain.ExceptionHandling;
 import com.ps.studybuddy.exception.domain.UserNotFoundException;
 import com.ps.studybuddy.exception.domain.UsernameExistException;
 import com.ps.studybuddy.services.UserService;
@@ -19,7 +20,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping(path = {"/users"})
-public class UserController {
+public class UserController extends ExceptionHandling {
     private final UserService userService;
 
     @Autowired
