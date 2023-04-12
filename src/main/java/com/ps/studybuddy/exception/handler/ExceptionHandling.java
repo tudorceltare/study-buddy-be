@@ -38,6 +38,7 @@ public class ExceptionHandling implements ErrorController {
     public static final String ENTITY_NOT_FOUND = "Entity was not found";
     public static final String SAME_PERSON_EXCEPTION = "You cannot request to connect to the same person";
     public static final String ANONYMOUS_USER_EXCEPTION = "You must be logged in to perform this action";
+    public static final String NOT_ADMIN_OF_GROUP = "You are not an admin of this group";
     public static final String ERROR_PATH = "/error";
 
     @ExceptionHandler(DisabledException.class)
@@ -125,6 +126,12 @@ public class ExceptionHandling implements ErrorController {
     public ResponseEntity<HttpResponse> anonymousUserException(AnonymousUserException exception) {
         LOGGER.error(exception.getMessage());
         return createHttpResponse(UNAUTHORIZED, ANONYMOUS_USER_EXCEPTION);
+    }
+
+    @ExceptionHandler(NotAdminOfGroupException.class)
+    public ResponseEntity<HttpResponse> notAdminOfGroupException(NotAdminOfGroupException exception) {
+        LOGGER.error(exception.getMessage());
+        return createHttpResponse(UNAUTHORIZED, NOT_ADMIN_OF_GROUP);
     }
 
     private ResponseEntity<HttpResponse> createHttpResponse(HttpStatus httpStatus, String message) {
