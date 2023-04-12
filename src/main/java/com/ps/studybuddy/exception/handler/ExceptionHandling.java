@@ -1,7 +1,8 @@
-package com.ps.studybuddy.exception.domain;
+package com.ps.studybuddy.exception.handler;
 
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.ps.studybuddy.domain.entities.HttpResponse;
+import com.ps.studybuddy.exception.domain.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.servlet.error.ErrorController;
@@ -36,6 +37,7 @@ public class ExceptionHandling implements ErrorController {
     public static final String NOT_ENOUGH_PERMISSION = "You do not have enough permission";
     public static final String ENTITY_NOT_FOUND = "Entity was not found";
     public static final String SAME_PERSON_EXCEPTION = "You cannot request to connect to the same person";
+    public static final String ANONYMOUS_USER_EXCEPTION = "You must be logged in to perform this action";
     public static final String ERROR_PATH = "/error";
 
     @ExceptionHandler(DisabledException.class)
@@ -117,6 +119,12 @@ public class ExceptionHandling implements ErrorController {
     public ResponseEntity<HttpResponse> connectionToSamePersonException(ConnectionToSamePersonException exception) {
         LOGGER.error(exception.getMessage());
         return createHttpResponse(INTERNAL_SERVER_ERROR, SAME_PERSON_EXCEPTION);
+    }
+
+    @ExceptionHandler(AnonymousUserException.class)
+    public ResponseEntity<HttpResponse> anonymousUserException(AnonymousUserException exception) {
+        LOGGER.error(exception.getMessage());
+        return createHttpResponse(UNAUTHORIZED, ANONYMOUS_USER_EXCEPTION);
     }
 
     private ResponseEntity<HttpResponse> createHttpResponse(HttpStatus httpStatus, String message) {
