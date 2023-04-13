@@ -4,7 +4,7 @@ import com.ps.studybuddy.domain.dtos.UserCreateDTO;
 import com.ps.studybuddy.domain.dtos.UserDTO;
 import com.ps.studybuddy.domain.dtos.UserUpdateDTO;
 import com.ps.studybuddy.exception.domain.EmailExistException;
-import com.ps.studybuddy.exception.domain.ExceptionHandling;
+import com.ps.studybuddy.exception.handler.ExceptionHandling;
 import com.ps.studybuddy.exception.domain.UserNotFoundException;
 import com.ps.studybuddy.exception.domain.UsernameExistException;
 import com.ps.studybuddy.services.UserService;
@@ -56,7 +56,7 @@ public class UserController extends ExceptionHandling {
     @PostMapping("/update")
     @PreAuthorize("hasAnyAuthority('user:update')")
     public ResponseEntity<UserDTO> update(@RequestBody UserUpdateDTO dto) throws UserNotFoundException, EmailExistException, UsernameExistException, EntityNotFoundException {
-        UserDTO personDeviceDTO = this.userService.updateUser(dto);
-        return ResponseEntity.ok().body(personDeviceDTO);
+        UserDTO userDTO = this.userService.updateUser(dto);
+        return ResponseEntity.ok().body(userDTO);
     }
 }

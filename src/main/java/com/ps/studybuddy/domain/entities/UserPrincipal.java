@@ -1,6 +1,7 @@
 package com.ps.studybuddy.domain.entities;
 
 import lombok.AllArgsConstructor;
+import lombok.ToString;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,6 +12,7 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.stream;
 
 @AllArgsConstructor
+@ToString
 public class UserPrincipal implements UserDetails {
     User user;
     @Override

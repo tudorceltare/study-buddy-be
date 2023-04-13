@@ -7,6 +7,7 @@ import org.hibernate.annotations.Type;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -46,4 +47,10 @@ public class User implements Serializable {
     private boolean isActive;
     @Column(name = "is_not_locked", nullable = false)
     private boolean isNotLocked;
+    @ManyToMany(mappedBy = "members", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    private List<Group> groupsWhereMember;
+    @OneToMany(mappedBy = "admin", orphanRemoval = true, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    private List<Group> groupsWhereAdmin;
 }

@@ -134,6 +134,18 @@ public class ExceptionHandling implements ErrorController {
         return createHttpResponse(UNAUTHORIZED, NOT_ADMIN_OF_GROUP);
     }
 
+    @ExceptionHandler(UserExistsInMemberListException.class)
+    public ResponseEntity<HttpResponse> userExistsInMemberListException(UserExistsInMemberListException exception) {
+        LOGGER.error(exception.getMessage());
+        return createHttpResponse(CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(UserNotFoundInGroupException.class)
+    public ResponseEntity<HttpResponse> userNotFoundInGroupException(UserNotFoundInGroupException exception) {
+        LOGGER.error(exception.getMessage());
+        return createHttpResponse(NOT_FOUND, exception.getMessage());
+    }
+
     private ResponseEntity<HttpResponse> createHttpResponse(HttpStatus httpStatus, String message) {
         HttpResponse httpResponse = new HttpResponse(
                 httpStatus.value(),

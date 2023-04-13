@@ -3,6 +3,7 @@ package com.ps.studybuddy.services;
 import com.ps.studybuddy.domain.dtos.UserCreateDTO;
 import com.ps.studybuddy.domain.dtos.UserDTO;
 import com.ps.studybuddy.domain.dtos.UserUpdateDTO;
+import com.ps.studybuddy.domain.entities.Group;
 import com.ps.studybuddy.domain.entities.User;
 import com.ps.studybuddy.domain.entities.UserPrincipal;
 import com.ps.studybuddy.domain.enumeration.Role;
@@ -87,6 +88,8 @@ public class UserService implements UserDetailsService {
         user.setNotLocked(true);
         user.setRole(dto.getRole());
         user.setAuthorities(getRoleEnumName(dto.getRole()).getAuthorities());
+        user.setGroupsWhereMember(new ArrayList<>());
+        user.setGroupsWhereAdmin(new ArrayList<>());
         this.userRepository.save(user);
         LOGGER.info("New user password: " + dto.getPassword());
         return user.getId().toString();
@@ -94,33 +97,46 @@ public class UserService implements UserDetailsService {
 
     public UserDTO updateUser(UserUpdateDTO dto) throws UserNotFoundException, EmailExistException, UsernameExistException, EntityNotFoundException {
         validateNewUsernameAndEmail(dto.getUsername(), dto.getNewUsername(), dto.getNewEmail());
-        Optional<User> personOptional = this.userRepository.findById(dto.getId());
-        if(personOptional.isEmpty()){
+        Optional<User> userOptional = this.userRepository.findById(dto.getId());
+        if(userOptional.isEmpty()){
             throw new EntityNotFoundException();
         }
-        User person = User.builder()
-                .id(personOptional.get().getId())
+        User user = User.builder()
+                .id(userOptional.get().getId())
                 .username(dto.getNewUsername())
                 .email(dto.getNewEmail())
                 .firstName(dto.getFirstName())
                 .lastName(dto.getLastName())
                 .build();
-        person.setActive(dto.isActive());
-        person.setNotLocked(dto.isNotLocked());
-        person.setId(personOptional.get().getId());
-        person.setCreatedDate(personOptional.get().getCreatedDate());
-        person.setPassword(personOptional.get().getPassword());
-        person.setAvatarColor(this.stringToColour(dto.getUsername()));
-        person.setRole(personOptional.get().getRole());
-        person.setAuthorities(personOptional.get().getAuthorities());
-        this.userRepository.save(person);
-        return this.modelMapper.map(person, UserDTO.class);
+        user.setActive(dto.isActive());
+        user.setNotLocked(dto.isNotLocked());
+        user.setId(userOptional.get().getId());
+        user.setCreatedDate(userOptional.get().getCreatedDate());
+        user.setPassword(userOptional.get().getPassword());
+        user.setAvatarColor(this.stringToColour(dto.getUsername()));
+        user.setRole(userOptional.get().getRole());
+        user.setAuthorities(userOptional.get().getAuthorities());
+        user.setGroupsWhereMember(userOptional.get().getGroupsWhereMember());
+        user.setGroupsWhereAdmin(userOptional.get().getGroupsWhereAdmin());
+        this.userRepository.save(user);
+        return this.modelMapper.map(user, UserDTO.class);
     }
 
     public void deleteById(UUID id) throws EntityNotFoundException {
-        Optional<User> personOptional = this.userRepository.findById(id);
-        if (personOptional.isEmpty()) {
+        Optional<User> userOptional = this.userRepository.findById(id);
+        if (userOptional.isEmpty()) {
             throw new EntityNotFoundException(User.class.getSimpleName() + " with id: " + id);
+        }
+        // delete all groups that the user is an admin of
+        for(Group group : userOptional.get().getGroupsWhereAdmin()) {
+            // this.groupService.delete(group);
+        }
+
+        // delete all instances of the user in groups where they are a member
+        for(Group group : userOptional.get().getGroupsWhereMember()) {
+            if(group.getAdmin().getId().equals(id)) {
+                // this.groupService.removeMember(group, userOptional.get());
+            }
         }
         this.userRepository.deleteById(id);
     }
@@ -130,34 +146,29 @@ public class UserService implements UserDetailsService {
     }
 
     private UserDTO validateNewUsernameAndEmail(String currentUsername, String newUsername, String newEmail) throws UserNotFoundException, EmailExistException, UsernameExistException {
-        UserDTO personByNewUsername = findByUsername(newUsername);
-        UserDTO personByNewEmail = findByEmail(newEmail);
+        UserDTO userByUsername = findByUsername(newUsername);
+        UserDTO userByNewEmail = findByEmail(newEmail);
         if (StringUtils.isNotBlank(currentUsername)) {
             UserDTO currentPerson = findByUsername(currentUsername);
             if (currentPerson == null) {
                 throw new UserNotFoundException(NO_PERSON_FOUND_BY_USERNAME + currentUsername);
             }
-            if (personByNewUsername != null && !currentPerson.getId().equals(personByNewUsername.getId())) {
+            if (userByUsername != null && !currentPerson.getId().equals(userByUsername.getId())) {
                 throw new UsernameExistException(USERNAME_ALREADY_EXISTS);
             }
-            if (personByNewEmail != null && !currentPerson.getId().equals(personByNewEmail.getId())) {
+            if (userByNewEmail != null && !currentPerson.getId().equals(userByNewEmail.getId())) {
                 throw new EmailExistException(EMAIL_ALREADY_EXISTS);
             }
             return currentPerson;
         } else {
-            if (personByNewUsername != null) {
+            if (userByUsername != null) {
                 throw new UsernameExistException(USERNAME_ALREADY_EXISTS);
             }
-            if (personByNewEmail != null) {
+            if (userByNewEmail != null) {
                 throw new EmailExistException(EMAIL_ALREADY_EXISTS);
             }
             return null;
         }
-    }
-
-    public User findEntityByUsername(String username) {
-        Optional<User> optional = this.userRepository.findUserByUsername(username);
-        return optional.orElse(null);
     }
 
     public UserDTO findByUsername(String username) {
@@ -190,5 +201,13 @@ public class UserService implements UserDetailsService {
             colour.append(String.format("%02x", value));
         }
         return colour.toString();
+    }
+
+    public User findUserByUsername(String username) {
+        Optional<User> optional = this.userRepository.findUserByUsername(username);
+        if (optional.isEmpty()) {
+            throw new EntityNotFoundException("User with username: " + username + " not found");
+        }
+        return optional.get();
     }
 }

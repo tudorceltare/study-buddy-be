@@ -38,7 +38,7 @@ public class LoginController {
     @PostMapping()
     public ResponseEntity<UserDTO> login(@RequestBody UserLoginDTO dto) {
         authenticate(dto.getUsername(), dto.getPassword());
-        User loginUser = this.userService.findEntityByUsername(dto.getUsername());
+        User loginUser = this.userService.findUserByUsername(dto.getUsername());
         UserPrincipal userPrincipal = new UserPrincipal(loginUser);
         HttpHeaders jwtHeader = getJwtHeader(userPrincipal);
         return ResponseEntity.ok()
