@@ -69,12 +69,12 @@ public class GroupController {
         return ResponseEntity.ok().body(groups);
     }
     @GetMapping(value = "/{id}")
-    public ResponseEntity<GroupDTO> getGroupById(@PathVariable("id") UUID id) {
-        GroupDTO dto = this.groupService.findById(id);
+    public ResponseEntity<GroupDetailsDTO> getGroupById(@PathVariable("id") UUID id) {
+        GroupDetailsDTO dto = this.groupService.findById(id);
         return ResponseEntity.ok().body(dto);
     }
 
-    @GetMapping(value = "/member/{id}")
+    @GetMapping(value = "/with-member/{id}")
     public ResponseEntity<List<GroupDTO>> getGroupsByMemberId(@PathVariable("id") UUID id) {
         List<GroupDTO> groups = this.groupService.findGroupsWhereUserIsMember(id);
         return ResponseEntity.ok().body(groups);
@@ -85,10 +85,17 @@ public class GroupController {
         return ResponseEntity.ok().body(members);
     }
 
-    @GetMapping(value = "/group-where-admin")
-    public ResponseEntity<List<GroupDTO>> getGroupsByAdminId() throws AnonymousUserException {
+    @GetMapping(value = "/where-admin")
+    public ResponseEntity<List<GroupDTO>> getGroupsWhereUserIsAdmin() throws AnonymousUserException {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         List<GroupDTO> groups = this.groupService.findGroupsWhereUserIsAdmin(authentication);
+        return ResponseEntity.ok().body(groups);
+    }
+
+    @GetMapping(value = "/where-member")
+    public ResponseEntity<List<GroupDTO>> getGroupsWhereUserIsMember() throws AnonymousUserException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        List<GroupDTO> groups = this.groupService.findGroupsWhereUserIsMember(authentication);
         return ResponseEntity.ok().body(groups);
     }
 

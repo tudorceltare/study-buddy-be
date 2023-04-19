@@ -110,12 +110,19 @@ public class GroupService {
                 .collect(Collectors.toList());
     }
 
-    public GroupDTO findById(UUID id) throws EntityNotFoundException {
+    public GroupDetailsDTO findById(UUID id) throws EntityNotFoundException {
         Optional<Group> groupOptional = this.groupRepository.findById(id);
         if(groupOptional.isEmpty()) {
             throw new EntityNotFoundException(Group.class.getSimpleName() + " with id: " + id + " not found");
         }
-        return this.modelMapper.map(groupOptional.get(), GroupDTO.class);
+        return GroupDetailsDTO.builder()
+                .id(groupOptional.get().getId())
+                .description(groupOptional.get().getDescription())
+                .name(groupOptional.get().getName())
+                .location(groupOptional.get().getLocation())
+                .admin(this.modelMapper.map(groupOptional.get().getAdmin(), UserDTO.class))
+                .members(this.findAllMembersOfGroup(groupOptional.get().getId()))
+                .build();
     }
 
     public List<GroupDTO> findGroupsWhereUserIsAdmin(Authentication authentication) throws AnonymousUserException {
@@ -135,6 +142,19 @@ public class GroupService {
             throw new EntityNotFoundException(User.class.getSimpleName() + " with id: " + id + " not found");
         }
         return this.groupRepository.findGroupsByMembersContaining(userOptional.get()).stream()
+                .map(group -> this.modelMapper.map(group, GroupDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Checks if the user is anonymous, checks if the group exists, checks if the user is the admin of the group,
+     * @param authentication Authentication
+     * @return List<GroupDTO> list of groups where the user is the admin
+     * @throws AnonymousUserException if the user is anonymous
+     */
+    public List<GroupDTO> findGroupsWhereUserIsMember(Authentication authentication) throws AnonymousUserException {
+        User authenticatedUser = this.checkAuthenticationAndGetUser(authentication);
+        return this.groupRepository.findGroupsByMembersContaining(authenticatedUser).stream()
                 .map(group -> this.modelMapper.map(group, GroupDTO.class))
                 .collect(Collectors.toList());
     }
