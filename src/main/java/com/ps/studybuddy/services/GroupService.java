@@ -5,10 +5,7 @@ import com.ps.studybuddy.domain.entities.Group;
 import com.ps.studybuddy.domain.entities.User;
 import com.ps.studybuddy.domain.repositories.GroupRepository;
 import com.ps.studybuddy.domain.repositories.UserRepository;
-import com.ps.studybuddy.exception.domain.AnonymousUserException;
-import com.ps.studybuddy.exception.domain.NotAdminOfGroupException;
-import com.ps.studybuddy.exception.domain.UserExistsInMemberListException;
-import com.ps.studybuddy.exception.domain.UserNotFoundInGroupException;
+import com.ps.studybuddy.exception.domain.*;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -204,6 +201,65 @@ public class GroupService {
             userRepository.save(authenticatedUser);
             groupRepository.save(group);
         }
+    }
+
+    public void kickUserFromGroup(UUID groupId, UUID userId, Authentication authentication) throws AnonymousUserException, NotAdminOfGroupException, IsAdminOfGroupException, UserNotFoundInGroupException {
+        if (authentication instanceof AnonymousAuthenticationToken) {
+            throw new AnonymousUserException("Anonymous user cannot create a group");
+        }
+        String adminUsername = authentication.getName();
+        Optional<Group> groupOptional = this.groupRepository.findById(groupId);
+        if(groupOptional.isEmpty()) {
+            throw new EntityNotFoundException(Group.class.getSimpleName() + " with id: " + groupId + " not found");
+        }
+        Group group = groupOptional.get();
+        if (!group.getAdmin().getUsername().equals(adminUsername)) {
+            throw new NotAdminOfGroupException("Only the admin of the group can kick somebody from the group");
+        }
+        Optional<User> userOptional = this.userRepository.findById(userId);
+        if(userOptional.isEmpty()) {
+            throw new EntityNotFoundException(User.class.getSimpleName() + " with id: " + userId + " not found");
+        }
+        User user = userOptional.get();
+        if(!group.getMembers().contains(user)) {
+            throw new UserNotFoundInGroupException("User is not a member of the group");
+        }
+        if(group.getAdmin().getId().equals(user.getId())) {
+            throw new IsAdminOfGroupException("Admin cannot be kicked from the group");
+        }
+        user.getGroupsWhereMember().remove(group);
+        group.getMembers().remove(user);
+        userRepository.save(user);
+        groupRepository.save(group);
+    }
+
+    public void promoteUserToAdmin(UUID groupId, UUID userId, Authentication authentication) throws AnonymousUserException, NotAdminOfGroupException, IsAdminOfGroupException, UserNotFoundInGroupException {
+        User authenticatedUser = this.checkAuthenticationAndGetUser(authentication);
+        Optional<Group> groupOptional = this.groupRepository.findById(groupId);
+        if(groupOptional.isEmpty()) {
+            throw new EntityNotFoundException(Group.class.getSimpleName() + " with id: " + groupId + " not found");
+        }
+        Group group = groupOptional.get();
+        if (!group.getAdmin().getId().equals(authenticatedUser.getId())) {
+            throw new NotAdminOfGroupException("Only the admin of the group can make somebody admin");
+        }
+        Optional<User> userOptional = this.userRepository.findById(userId);
+        if(userOptional.isEmpty()) {
+            throw new EntityNotFoundException(User.class.getSimpleName() + " with id: " + userId + " not found");
+        }
+        User user = userOptional.get();
+        if(!group.getMembers().contains(user)) {
+            throw new UserNotFoundInGroupException("User is not a member of the group");
+        }
+        if(group.getAdmin().getId().equals(user.getId())) {
+            throw new IsAdminOfGroupException("User is already admin of the group");
+        }
+        group.setAdmin(user);
+        user.getGroupsWhereAdmin().add(group);
+        authenticatedUser.getGroupsWhereAdmin().remove(group);
+        this.userRepository.save(authenticatedUser);
+        this.userRepository.save(user);
+        groupRepository.save(group);
     }
 
     public List<UserDTO> findAllMembersOfGroup(UUID groupId) {

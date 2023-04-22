@@ -1,16 +1,11 @@
 package com.ps.studybuddy.web.controllers;
 
 import com.ps.studybuddy.domain.dtos.*;
-import com.ps.studybuddy.domain.entities.UserPrincipal;
-import com.ps.studybuddy.exception.domain.AnonymousUserException;
-import com.ps.studybuddy.exception.domain.NotAdminOfGroupException;
-import com.ps.studybuddy.exception.domain.UserExistsInMemberListException;
-import com.ps.studybuddy.exception.domain.UserNotFoundInGroupException;
+import com.ps.studybuddy.exception.domain.*;
 import com.ps.studybuddy.services.GroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -63,6 +58,20 @@ public class GroupController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @PostMapping("/kick")
+    public ResponseEntity<String> kickUserFromGroup(@RequestParam("groupId") UUID groupID, @RequestParam("userId") UUID userID) throws AnonymousUserException, NotAdminOfGroupException, IsAdminOfGroupException, UserNotFoundInGroupException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        this.groupService.kickUserFromGroup(groupID, userID, authentication);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PostMapping("/promote")
+    public ResponseEntity<String> promoteUserToAdmin(@RequestParam("groupId") UUID groupID, @RequestParam("userId") UUID userID) throws AnonymousUserException, NotAdminOfGroupException, IsAdminOfGroupException, UserNotFoundInGroupException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        this.groupService.promoteUserToAdmin(groupID, userID, authentication);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
     @GetMapping()
     public ResponseEntity<List<GroupDTO>> getAllGroups() {
         List<GroupDTO> groups = this.groupService.findAll();
@@ -97,23 +106,5 @@ public class GroupController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         List<GroupDTO> groups = this.groupService.findGroupsWhereUserIsMember(authentication);
         return ResponseEntity.ok().body(groups);
-    }
-
-    @PostMapping(value = "/test")
-    @ResponseBody
-    public ResponseEntity<String> test(Authentication authentication) {
-//        System.out.println("Security Context Holder: " + SecurityContextHolder.getContext().toString());
-//        System.out.println("Authentication: " + authentication.toString());
-//        System.out.println("Principal: " + authentication.getPrincipal().toString());
-//        System.out.println("Credentials: " + authentication.getCredentials().toString());
-//        System.out.println("Details: " + authentication.getDetails().toString());
-//        System.out.println("Authorities: " + authentication.getAuthorities().toString());
-//        System.out.println("name: " + authentication.getName());
-        System.out.println("Get user principal");
-        if (!(authentication instanceof AnonymousAuthenticationToken)) {
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-            System.out.println("UserPrincipal: " + userPrincipal.toString());
-        }
-        return ResponseEntity.ok().body(authentication.getPrincipal().toString());
     }
 }
