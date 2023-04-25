@@ -151,13 +151,18 @@ public class ExceptionHandling implements ErrorController {
         LOGGER.error(exception.getMessage());
         return createHttpResponse(NOT_FOUND, exception.getMessage());
     }
+    @ExceptionHandler(MeetingDateIsInThePastException.class)
+    public ResponseEntity<HttpResponse> meetingDateIsInThePastException(MeetingDateIsInThePastException exception) {
+        LOGGER.error(exception.getMessage());
+        return createHttpResponse(CONFLICT, exception.getMessage());
+    }
 
     private ResponseEntity<HttpResponse> createHttpResponse(HttpStatus httpStatus, String message) {
         HttpResponse httpResponse = new HttpResponse(
                 httpStatus.value(),
                 httpStatus,
                 httpStatus.getReasonPhrase().toUpperCase(),
-                message.toUpperCase()
+                message
         );
         return new ResponseEntity<>(httpResponse, httpStatus);
     }

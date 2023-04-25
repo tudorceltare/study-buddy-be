@@ -107,4 +107,18 @@ public class GroupController {
         List<GroupDTO> groups = this.groupService.findGroupsWhereUserIsMember(authentication);
         return ResponseEntity.ok().body(groups);
     }
+
+    @PostMapping("/add-meeting-dates")
+    public ResponseEntity<String> addMeetingDates(@RequestBody GroupMeetingDatesDTO dto) throws AnonymousUserException, NotAdminOfGroupException, MeetingDateIsInThePastException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        this.groupService.addMeetingDates(dto, authentication);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PostMapping("/remove-meeting-dates")
+    public ResponseEntity<String> removeMeetingDates(@RequestBody GroupMeetingDatesDTO dto) throws AnonymousUserException, NotAdminOfGroupException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        this.groupService.removeMeetingDates(dto, authentication);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }

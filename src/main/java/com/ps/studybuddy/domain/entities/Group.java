@@ -18,6 +18,7 @@ import java.util.UUID;
 @Builder
 @Entity
 @Table(name = "app_group")
+@NamedEntityGraph(name = "group-with-meeting-dates", attributeNodes = @NamedAttributeNode("meetingDates"))
 public class Group implements Serializable {
     @Id
     @GeneratedValue(generator = "uuid2")
@@ -43,4 +44,10 @@ public class Group implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "admin_id", nullable = false)
     private User admin;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "group_meeting_dates", joinColumns = @JoinColumn(name = "group_id"))
+    @Column(name = "meeting_dates")
+    @Temporal(TemporalType.TIMESTAMP)
+    private List<Date> meetingDates;
 }

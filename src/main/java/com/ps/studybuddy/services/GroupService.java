@@ -44,6 +44,7 @@ public class GroupService {
         group.setMembers(new ArrayList<>());
         group.getMembers().add(admin);
         group.setCreatedDate(new Date());
+        group.setMeetingDates(new ArrayList<>());
         groupRepository.save(group);
     }
 
@@ -119,6 +120,7 @@ public class GroupService {
                 .location(groupOptional.get().getLocation())
                 .admin(this.modelMapper.map(groupOptional.get().getAdmin(), UserDTO.class))
                 .members(this.findAllMembersOfGroup(groupOptional.get().getId()))
+                .meetingDates(groupOptional.get().getMeetingDates())
                 .build();
     }
 
@@ -270,6 +272,63 @@ public class GroupService {
         return groupOptional.get().getMembers().stream()
                 .map(user -> this.modelMapper.map(user, UserDTO.class))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Checks if the user is authenticated, checks if the user is admin of the group, checks if the meeting dates are
+     * in the future, converts list to Set so that there are no duplicates and saves the new meeting dates to the group
+     * @param dto the group meeting dates DTO with the group id and the list of meeting dates
+     * @param authentication the authentication object
+     * @throws AnonymousUserException if the user is anonymous/has no authentication
+     * @throws NotAdminOfGroupException if the user is not admin of the group
+     * @throws MeetingDateIsInThePastException if the meeting date is in the past
+     */
+    public void addMeetingDates(GroupMeetingDatesDTO dto, Authentication authentication) throws AnonymousUserException, NotAdminOfGroupException, MeetingDateIsInThePastException {
+        User authenticatedUser = this.checkAuthenticationAndGetUser(authentication);
+        Optional<Group> groupOptional = this.groupRepository.findById(dto.getGroupId());
+        if(groupOptional.isEmpty()) {
+            throw new EntityNotFoundException(Group.class.getSimpleName() + " with id: " + dto.getGroupId() + " not found");
+        }
+        Group group = groupOptional.get();
+        if (!group.getAdmin().getId().equals(authenticatedUser.getId())) {
+            throw new NotAdminOfGroupException("Only the admin of the group can add meeting dates");
+        }
+        for(Date date : dto.getMeetingDates()) {
+            if(date.before(new Date())) {
+                throw new MeetingDateIsInThePastException("Meeting date cannot be in the past");
+            }
+        }
+        Set<Date> existingMeetingDates = new HashSet<>(group.getMeetingDates());
+        existingMeetingDates.addAll(dto.getMeetingDates());
+        List<Date> sortedMeetingDates = new ArrayList<>(existingMeetingDates);
+        Collections.sort(sortedMeetingDates);
+        group.setMeetingDates(sortedMeetingDates);
+        groupRepository.save(group);
+    }
+
+    /**
+     * Checks if the user is authenticated, checks if the user is admin of the group,
+     * removes the meeting dates from the group
+     * @param dto the group meeting dates DTO with the group id and the list of meeting dates
+     * @param authentication the authentication object
+     * @throws AnonymousUserException if the user is anonymous/has no authentication
+     * @throws NotAdminOfGroupException if the user is not admin of the group
+     */
+    public void removeMeetingDates(GroupMeetingDatesDTO dto, Authentication authentication) throws AnonymousUserException, NotAdminOfGroupException {
+        User authenticatedUser = this.checkAuthenticationAndGetUser(authentication);
+        Optional<Group> groupOptional = this.groupRepository.findById(dto.getGroupId());
+        if(groupOptional.isEmpty()) {
+            throw new EntityNotFoundException(Group.class.getSimpleName() + " with id: " + dto.getGroupId() + " not found");
+        }
+        Group group = groupOptional.get();
+        if (!group.getAdmin().getId().equals(authenticatedUser.getId())) {
+            throw new NotAdminOfGroupException("Only the admin of the group can remove meeting dates");
+        }
+        for (Date date : dto.getMeetingDates()) {
+            group.getMeetingDates().remove(date);
+        }
+
+        groupRepository.save(group);
     }
 
     private User checkAuthenticationAndGetUser(Authentication authentication) throws AnonymousUserException {
