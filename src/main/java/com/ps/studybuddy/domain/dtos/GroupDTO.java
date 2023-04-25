@@ -2,6 +2,7 @@ package com.ps.studybuddy.domain.dtos;
 
 import lombok.*;
 
+import java.util.Date;
 import java.util.UUID;
 
 @Getter
@@ -14,4 +15,5 @@ public class GroupDTO {
     private String name;
     private String description;
     private String location;
+    private Date nextMeetingDate;
 }

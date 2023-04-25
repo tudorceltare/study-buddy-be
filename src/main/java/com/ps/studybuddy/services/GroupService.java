@@ -102,9 +102,29 @@ public class GroupService {
         groupRepository.delete(group);
     }
 
+    /**
+     * A function that maps a group to a GroupDTO and gets the next meeting date in relation to the current date
+     * @param group the group to be mapped
+     * @return GroupDTO
+     */
+    private GroupDTO mapGroupToGroupDTO(Group group) {
+        GroupDTO dto = this.modelMapper.map(group, GroupDTO.class);
+        if (group.getMeetingDates().isEmpty()){
+            dto.setNextMeetingDate(null);
+        } else {
+            Date nextMeetingDate = group.getMeetingDates().stream()
+                    .filter((date) -> date.after(new Date()))
+                    .min(Date::compareTo)
+                    .orElse(null);
+            dto.setNextMeetingDate(nextMeetingDate);
+        }
+        return dto;
+    }
+
     public List<GroupDTO> findAll() {
+        Date now = new Date();
         return this.groupRepository.findAll().stream()
-                .map(group -> this.modelMapper.map(group, GroupDTO.class))
+                .map(this::mapGroupToGroupDTO)
                 .collect(Collectors.toList());
     }
 
@@ -131,9 +151,10 @@ public class GroupService {
         String adminUsername = authentication.getName();
         User admin = this.userService.findUserByUsername(adminUsername);
         return this.groupRepository.findGroupsByAdmin(admin).stream()
-                .map(group -> this.modelMapper.map(group, GroupDTO.class))
+                .map(this::mapGroupToGroupDTO)
                 .collect(Collectors.toList());
     }
+
 
     public List<GroupDTO> findGroupsWhereUserIsMember(UUID id) {
         Optional<User> userOptional = this.userRepository.findById(id);
@@ -141,7 +162,7 @@ public class GroupService {
             throw new EntityNotFoundException(User.class.getSimpleName() + " with id: " + id + " not found");
         }
         return this.groupRepository.findGroupsByMembersContaining(userOptional.get()).stream()
-                .map(group -> this.modelMapper.map(group, GroupDTO.class))
+                .map(this::mapGroupToGroupDTO)
                 .collect(Collectors.toList());
     }
 
@@ -154,7 +175,7 @@ public class GroupService {
     public List<GroupDTO> findGroupsWhereUserIsMember(Authentication authentication) throws AnonymousUserException {
         User authenticatedUser = this.checkAuthenticationAndGetUser(authentication);
         return this.groupRepository.findGroupsByMembersContaining(authenticatedUser).stream()
-                .map(group -> this.modelMapper.map(group, GroupDTO.class))
+                .map(this::mapGroupToGroupDTO)
                 .collect(Collectors.toList());
     }
 
@@ -301,7 +322,7 @@ public class GroupService {
         Set<Date> existingMeetingDates = new HashSet<>(group.getMeetingDates());
         existingMeetingDates.addAll(dto.getMeetingDates());
         List<Date> sortedMeetingDates = new ArrayList<>(existingMeetingDates);
-        Collections.sort(sortedMeetingDates);
+        sortedMeetingDates.sort(Collections.reverseOrder());
         group.setMeetingDates(sortedMeetingDates);
         groupRepository.save(group);
     }
