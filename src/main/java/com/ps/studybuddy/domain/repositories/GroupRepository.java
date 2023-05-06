@@ -20,6 +20,9 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
     @EntityGraph(value = "group-with-meeting-dates", type = EntityGraph.EntityGraphType.FETCH)
     Optional<Group> findById(UUID id);
 
+    @EntityGraph(value = "group-with-meeting-dates", type = EntityGraph.EntityGraphType.FETCH)
+    Optional<Group> findByIdOrderByMeetingDatesAsc(UUID id);
+
     List<Group> findGroupsByAdmin(User user);
     List<Group> findGroupsByMembersContaining(User user);
 }

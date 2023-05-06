@@ -50,4 +50,13 @@ public class Group implements Serializable {
     @Column(name = "meeting_dates")
     @Temporal(TemporalType.TIMESTAMP)
     private List<Date> meetingDates;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "group_topics",
+            joinColumns = @JoinColumn(name = "group_id"),
+            inverseJoinColumns = @JoinColumn(name = "topic_id")
+    )
+    @ToString.Exclude
+    private List<Topic> topics;
+
 }

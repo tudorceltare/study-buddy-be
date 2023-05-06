@@ -157,6 +157,18 @@ public class ExceptionHandling implements ErrorController {
         return createHttpResponse(CONFLICT, exception.getMessage());
     }
 
+    @ExceptionHandler(TopicExistException.class)
+    public ResponseEntity<HttpResponse> topicExistException(TopicExistException exception) {
+        LOGGER.error(exception.getMessage());
+        return createHttpResponse(CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(TopicNotFoundException.class)
+    public ResponseEntity<HttpResponse> topicNotFoundException(TopicNotFoundException exception) {
+        LOGGER.error(exception.getMessage());
+        return createHttpResponse(NOT_FOUND, exception.getMessage());
+    }
+
     private ResponseEntity<HttpResponse> createHttpResponse(HttpStatus httpStatus, String message) {
         HttpResponse httpResponse = new HttpResponse(
                 httpStatus.value(),

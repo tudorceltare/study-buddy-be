@@ -2,8 +2,10 @@ package com.ps.studybuddy.services;
 
 import com.ps.studybuddy.domain.dtos.*;
 import com.ps.studybuddy.domain.entities.Group;
+import com.ps.studybuddy.domain.entities.Topic;
 import com.ps.studybuddy.domain.entities.User;
 import com.ps.studybuddy.domain.repositories.GroupRepository;
+import com.ps.studybuddy.domain.repositories.TopicRepository;
 import com.ps.studybuddy.domain.repositories.UserRepository;
 import com.ps.studybuddy.exception.domain.*;
 import org.modelmapper.ModelMapper;
@@ -22,15 +24,19 @@ import java.util.stream.Collectors;
 public class GroupService {
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
+    private final TopicRepository topicRepository;
     private final ModelMapper modelMapper;
     private final UserService userService;
+    private final TopicService topicService;
 
     @Autowired
-    public GroupService(GroupRepository groupRepository,UserRepository userRepository , ModelMapper modelMapper, UserService userService) {
+    public GroupService(GroupRepository groupRepository, UserRepository userRepository, TopicRepository topicRepository, ModelMapper modelMapper, UserService userService, TopicService topicService) {
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
+        this.topicRepository = topicRepository;
         this.modelMapper = modelMapper;
         this.userService = userService;
+        this.topicService = topicService;
     }
 
     public void createGroup(GroupCreateDTO dto, Authentication authentication) throws AnonymousUserException {
@@ -40,6 +46,12 @@ public class GroupService {
         String adminUsername = authentication.getName();
         Group group = modelMapper.map(dto, Group.class);
         User admin = this.userService.findUserByUsername(adminUsername);
+        // get the list of TopicDTOs from dto and call the TopicService to create the topics
+        List<Topic> topics = new ArrayList<>();
+        for(TopicDTO topicDTO : dto.getTopics()) {
+            topics.add(this.topicService.createTopic(topicDTO, group));
+        }
+        group.setTopics(topics);
         group.setAdmin(admin);
         group.setMembers(new ArrayList<>());
         group.getMembers().add(admin);
@@ -69,6 +81,11 @@ public class GroupService {
         if (!group.getAdmin().getUsername().equals(adminUsername)) {
             throw new NotAdminOfGroupException("Only the admin of the group can update the group");
         }
+        List<Topic> topics = new ArrayList<>();
+        for(TopicDTO topicDTO : dto.getTopics()) {
+            topics.add(this.topicService.createTopic(topicDTO, group));
+        }
+        group.setTopics(topics);
         group.setName(dto.getName());
         group.setDescription(dto.getDescription());
         group.setLocation(dto.getLocation());
@@ -76,7 +93,8 @@ public class GroupService {
     }
 
     /**
-     * Checks if the user is the admin of the group, removes all associated members and deletes the group
+     * Checks if the user is the admin of the group, removes the group from all associated users, removes the group
+     * from all associated topics and finally deletes the group
      * @param groupId id of the group to be deleted
      * @param authentication the user who is trying to delete the group from ContextHolder
      * @throws AnonymousUserException if the user is anonymous/has no authentication
@@ -98,6 +116,12 @@ public class GroupService {
         List<User> members = group.getMembers();
         for (User member : members) {
             member.getGroupsWhereMember().remove(group);
+            this.userRepository.save(member);
+        }
+        List<Topic> topics = group.getTopics();
+        for (Topic topic : topics) {
+            topic.getGroups().remove(group);
+            this.topicRepository.save(topic);
         }
         groupRepository.delete(group);
     }
@@ -108,7 +132,15 @@ public class GroupService {
      * @return GroupDTO
      */
     private GroupDTO mapGroupToGroupDTO(Group group) {
-        GroupDTO dto = this.modelMapper.map(group, GroupDTO.class);
+        GroupDTO dto = GroupDTO.builder()
+                .id(group.getId())
+                .name(group.getName())
+                .description(group.getDescription())
+                .location(group.getLocation())
+                .topics(group.getTopics().stream()
+                        .map(topic -> this.modelMapper.map(topic, TopicDTO.class))
+                        .collect(Collectors.toList()))
+                .build();
         if (group.getMeetingDates().isEmpty()){
             dto.setNextMeetingDate(null);
         } else {
@@ -122,26 +154,30 @@ public class GroupService {
     }
 
     public List<GroupDTO> findAll() {
-        Date now = new Date();
         return this.groupRepository.findAll().stream()
                 .map(this::mapGroupToGroupDTO)
                 .collect(Collectors.toList());
     }
 
     public GroupDetailsDTO findById(UUID id) throws EntityNotFoundException {
-        Optional<Group> groupOptional = this.groupRepository.findById(id);
+        Optional<Group> groupOptional = this.groupRepository.findByIdOrderByMeetingDatesAsc(id);
         if(groupOptional.isEmpty()) {
             throw new EntityNotFoundException(Group.class.getSimpleName() + " with id: " + id + " not found");
         }
-        return GroupDetailsDTO.builder()
-                .id(groupOptional.get().getId())
-                .description(groupOptional.get().getDescription())
-                .name(groupOptional.get().getName())
-                .location(groupOptional.get().getLocation())
-                .admin(this.modelMapper.map(groupOptional.get().getAdmin(), UserDTO.class))
-                .members(this.findAllMembersOfGroup(groupOptional.get().getId()))
-                .meetingDates(groupOptional.get().getMeetingDates())
+        Group group = groupOptional.get();
+        GroupDetailsDTO dto = GroupDetailsDTO.builder()
+                .id(group.getId())
+                .description(group.getDescription())
+                .name(group.getName())
+                .location(group.getLocation())
+                .admin(this.modelMapper.map(group.getAdmin(), UserDTO.class))
+                .members(this.findAllMembersOfGroup(group.getId()))
+                .meetingDates(group.getMeetingDates())
+                .topics(group.getTopics().stream()
+                        .map(topic -> this.modelMapper.map(topic, TopicDTO.class))
+                        .collect(Collectors.toList()))
                 .build();
+        return dto;
     }
 
     public List<GroupDTO> findGroupsWhereUserIsAdmin(Authentication authentication) throws AnonymousUserException {

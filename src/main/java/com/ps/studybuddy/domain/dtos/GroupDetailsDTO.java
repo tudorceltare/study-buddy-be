@@ -18,4 +18,5 @@ public class GroupDetailsDTO {
     private UserDTO admin;
     private List<UserDTO> members;
     private List<Date> meetingDates;
+    private List<TopicDTO> topics;
 }
