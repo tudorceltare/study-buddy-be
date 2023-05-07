@@ -46,11 +46,7 @@ public class GroupService {
         String adminUsername = authentication.getName();
         Group group = modelMapper.map(dto, Group.class);
         User admin = this.userService.findUserByUsername(adminUsername);
-        // get the list of TopicDTOs from dto and call the TopicService to create the topics
-        List<Topic> topics = new ArrayList<>();
-        for(TopicDTO topicDTO : dto.getTopics()) {
-            topics.add(this.topicService.createTopic(topicDTO, group));
-        }
+        List<Topic> topics = createListOfTopics(dto.getTopics(), group);
         group.setTopics(topics);
         group.setAdmin(admin);
         group.setMembers(new ArrayList<>());
@@ -81,15 +77,29 @@ public class GroupService {
         if (!group.getAdmin().getUsername().equals(adminUsername)) {
             throw new NotAdminOfGroupException("Only the admin of the group can update the group");
         }
-        List<Topic> topics = new ArrayList<>();
-        for(TopicDTO topicDTO : dto.getTopics()) {
-            topics.add(this.topicService.createTopic(topicDTO, group));
-        }
+        List<Topic> topics = createListOfTopics(dto.getTopics(), group);
         group.setTopics(topics);
         group.setName(dto.getName());
         group.setDescription(dto.getDescription());
         group.setLocation(dto.getLocation());
         groupRepository.save(group);
+    }
+
+    private List<Topic> createListOfTopics(List<TopicDTO> topicDTOs, Group group) {
+        List<Topic> topics = new ArrayList<>();
+        if (topicDTOs != null) {
+            Set<String> topicNames = new HashSet<>();
+            for(TopicDTO topicDTO : topicDTOs) {
+                String topicName = topicDTO.getName().toLowerCase();
+                if (topicNames.contains(topicName)) {
+                    System.out.println("Duplicate topic found: " + topicName);
+                } else {
+                    topicNames.add(topicName);
+                    topics.add(this.topicService.createTopic(topicDTO, group));
+                }
+            }
+        }
+        return topics;
     }
 
     /**
