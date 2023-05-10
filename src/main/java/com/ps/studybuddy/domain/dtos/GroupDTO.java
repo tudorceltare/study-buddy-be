@@ -15,7 +15,7 @@ public class GroupDTO {
     private UUID id;
     private String name;
     private String description;
-    private String location;
+    private LocationDTO location;
     private Date nextMeetingDate;
     private List<TopicDTO> topics;
 }

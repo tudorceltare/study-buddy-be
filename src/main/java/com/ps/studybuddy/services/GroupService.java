@@ -2,9 +2,11 @@ package com.ps.studybuddy.services;
 
 import com.ps.studybuddy.domain.dtos.*;
 import com.ps.studybuddy.domain.entities.Group;
+import com.ps.studybuddy.domain.entities.Location;
 import com.ps.studybuddy.domain.entities.Topic;
 import com.ps.studybuddy.domain.entities.User;
 import com.ps.studybuddy.domain.repositories.GroupRepository;
+import com.ps.studybuddy.domain.repositories.LocationRepository;
 import com.ps.studybuddy.domain.repositories.TopicRepository;
 import com.ps.studybuddy.domain.repositories.UserRepository;
 import com.ps.studybuddy.exception.domain.*;
@@ -25,15 +27,19 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
     private final TopicRepository topicRepository;
+    private final LocationRepository locationRepository;
     private final ModelMapper modelMapper;
     private final UserService userService;
     private final TopicService topicService;
 
     @Autowired
-    public GroupService(GroupRepository groupRepository, UserRepository userRepository, TopicRepository topicRepository, ModelMapper modelMapper, UserService userService, TopicService topicService) {
+    public GroupService(GroupRepository groupRepository, UserRepository userRepository, TopicRepository topicRepository,
+                        LocationRepository locationRepository, ModelMapper modelMapper, UserService userService,
+                        TopicService topicService) {
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
         this.topicRepository = topicRepository;
+        this.locationRepository = locationRepository;
         this.modelMapper = modelMapper;
         this.userService = userService;
         this.topicService = topicService;
@@ -44,7 +50,13 @@ public class GroupService {
             throw new AnonymousUserException("Anonymous user cannot create a group");
         }
         String adminUsername = authentication.getName();
-        Group group = modelMapper.map(dto, Group.class);
+        Location groupLocation = modelMapper.map(dto.getLocation(), Location.class);
+        groupLocation = this.locationRepository.save(groupLocation);
+        Group group = Group.builder()
+                .name(dto.getName())
+                .description(dto.getDescription())
+                .location(groupLocation)
+                .build();
         User admin = this.userService.findUserByUsername(adminUsername);
         List<Topic> topics = createListOfTopics(dto.getTopics(), group);
         group.setTopics(topics);
@@ -81,7 +93,13 @@ public class GroupService {
         group.setTopics(topics);
         group.setName(dto.getName());
         group.setDescription(dto.getDescription());
-        group.setLocation(dto.getLocation());
+        Location previousLocation = group.getLocation();
+        Location newLocation = modelMapper.map(dto.getLocation(), Location.class);
+        if(!previousLocation.equals(newLocation)) {
+            newLocation.setId(previousLocation.getId());
+            newLocation = this.locationRepository.save(newLocation);
+            group.setLocation(newLocation);
+        }
         groupRepository.save(group);
     }
 
@@ -146,7 +164,7 @@ public class GroupService {
                 .id(group.getId())
                 .name(group.getName())
                 .description(group.getDescription())
-                .location(group.getLocation())
+                .location(this.modelMapper.map(group.getLocation(), LocationDTO.class))
                 .topics(group.getTopics().stream()
                         .map(topic -> this.modelMapper.map(topic, TopicDTO.class))
                         .collect(Collectors.toList()))
@@ -179,7 +197,7 @@ public class GroupService {
                 .id(group.getId())
                 .description(group.getDescription())
                 .name(group.getName())
-                .location(group.getLocation())
+                .location(this.modelMapper.map(group.getLocation(), LocationDTO.class))
                 .admin(this.modelMapper.map(group.getAdmin(), UserDTO.class))
                 .members(this.findAllMembersOfGroup(group.getId()))
                 .meetingDates(group.getMeetingDates())
@@ -402,7 +420,7 @@ public class GroupService {
         if (authentication instanceof AnonymousAuthenticationToken) {
             throw new AnonymousUserException("Anonymous user cannot create a group");
         }
-        String adminUsername = authentication.getName();
-        return this.userService.findUserByUsername(adminUsername);
+        String username = authentication.getName();
+        return this.userService.findUserByUsername(username);
     }
 }

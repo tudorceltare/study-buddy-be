@@ -1,13 +1,12 @@
 package com.ps.studybuddy.services;
 
-import com.ps.studybuddy.domain.dtos.UserCreateDTO;
-import com.ps.studybuddy.domain.dtos.UserDTO;
-import com.ps.studybuddy.domain.dtos.UserUpdateDTO;
+import com.ps.studybuddy.domain.dtos.*;
 import com.ps.studybuddy.domain.entities.Group;
 import com.ps.studybuddy.domain.entities.User;
 import com.ps.studybuddy.domain.entities.UserPrincipal;
 import com.ps.studybuddy.domain.enumeration.Role;
 import com.ps.studybuddy.domain.repositories.UserRepository;
+import com.ps.studybuddy.exception.domain.AnonymousUserException;
 import com.ps.studybuddy.exception.domain.EmailExistException;
 import com.ps.studybuddy.exception.domain.UserNotFoundException;
 import com.ps.studybuddy.exception.domain.UsernameExistException;
@@ -17,6 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -209,5 +210,57 @@ public class UserService implements UserDetailsService {
             throw new EntityNotFoundException("User with username: " + username + " not found");
         }
         return optional.get();
+    }
+
+    public List<MeetingDTO> findAllMeetingDatesOfUserWhereMember(Authentication authentication) throws AnonymousUserException {
+        User user = checkAuthenticationAndGetUser(authentication);
+        return findAllMeetingDatesFromGroups(user.getGroupsWhereMember());
+    }
+
+    public List<MeetingDTO> findAllMeetingDatesOfUserWhereAdmin(Authentication authentication) throws AnonymousUserException {
+        User user = checkAuthenticationAndGetUser(authentication);
+        return findAllMeetingDatesFromGroups(user.getGroupsWhereAdmin());
+    }
+
+    private List<MeetingDTO> findAllMeetingDatesFromGroups(List<Group> groups) {
+        List<MeetingDTO> meetings = new ArrayList<>();
+        for(Group group : groups) {
+            for(Date meetingDate : group.getMeetingDates()) {
+                MeetingDTO meeting = MeetingDTO.builder()
+                        .meetingDate(meetingDate)
+                        .location(this.modelMapper.map(group.getLocation(), LocationDTO.class))
+                        .groupName(group.getName())
+                        .groupId(group.getId())
+                        .build();
+                meetings.add(meeting);
+            }
+        }
+        return meetings;
+    }
+
+    public List<LocationDTO> findAllMeetingLocationsOfUserWhereMember(Authentication authentication) throws AnonymousUserException {
+        User user = checkAuthenticationAndGetUser(authentication);
+        return findAllMeetingLocationsOfGroups(user.getGroupsWhereMember());
+    }
+
+    public List<LocationDTO> findAllMeetingLocationsOfUserWhereAdmin(Authentication authentication) throws AnonymousUserException {
+        User user = checkAuthenticationAndGetUser(authentication);
+        return findAllMeetingLocationsOfGroups(user.getGroupsWhereAdmin());
+    }
+
+    private List<LocationDTO> findAllMeetingLocationsOfGroups(List<Group> groups) {
+        List<LocationDTO> locations = new ArrayList<>();
+        for(Group group : groups) {
+            locations.add(this.modelMapper.map(group.getLocation(), LocationDTO.class));
+        }
+        return locations;
+    }
+
+    private User checkAuthenticationAndGetUser(Authentication authentication) throws AnonymousUserException {
+        if (authentication instanceof AnonymousAuthenticationToken) {
+            throw new AnonymousUserException("Anonymous user cannot create a group");
+        }
+        String username = authentication.getName();
+        return this.findUserByUsername(username);
     }
 }

@@ -2,18 +2,16 @@ package com.ps.studybuddy.domain.dtos;
 
 import lombok.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class GroupUpdateDTO {
+public class LocationDTO {
     private UUID id;
     private String name;
-    private String description;
-    private LocationDTO location;
-    private List<TopicDTO> topics;
+    private Double latitude;
+    private Double longitude;
 }

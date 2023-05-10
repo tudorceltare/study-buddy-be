@@ -14,7 +14,7 @@ public class GroupDetailsDTO {
     private UUID id;
     private String name;
     private String description;
-    private String location;
+    private LocationDTO location;
     private UserDTO admin;
     private List<UserDTO> members;
     private List<Date> meetingDates;

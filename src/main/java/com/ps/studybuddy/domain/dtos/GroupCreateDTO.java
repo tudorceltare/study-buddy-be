@@ -12,6 +12,6 @@ import java.util.List;
 public class GroupCreateDTO {
     private String name;
     private String description;
-    private String location;
+    private LocationDTO location;
     private List<TopicDTO> topics;
 }

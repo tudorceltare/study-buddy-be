@@ -32,17 +32,20 @@ public class Group implements Serializable {
     private String name;
     @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     private String description;
-    @Column(name = "location", nullable = false)
-    private String location;
+
+    @OneToOne(fetch = FetchType.LAZY, orphanRemoval = true, optional = false)
+    @JoinColumn(name = "location_id", referencedColumnName = "id", nullable = false)
+    private Location location;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "group_members",
             joinColumns = @JoinColumn(name = "group_id")
     )
     @ToString.Exclude
     private List<User> members;
-    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "admin_id", nullable = false)
+    @ToString.Exclude
     private User admin;
 
     @ElementCollection(fetch = FetchType.LAZY)
